@@ -1,25 +1,28 @@
-const express = require("express");
-const bodyParser = require("body-parser");
-const mongoose = require("mongoose");
+// Loading evnironmental variables here
+if (process.env.NODE_ENV !== 'production') {
+	console.log('loading dev environments')
+	require('dotenv').config()
+}
+require('dotenv').config();
 
-const path = require("path");
-const PORT = process.env.PORT || 3001;
+const express = require('express');
+const bodyParser = require('body-parser');
+const morgan = require('morgan');
+const session = require('express-session');
+const MongoStore = require('connect-mongo')(session);
+const dbConnection = require("./models/dbConnection"); // loads our connection to the mongo database
+const passport = require('./passport');
 const app = express();
-
-const morgan = require("morgan");
-const session = require("express-session");
-const MongoStore = require("connect-mongo")(session);
-const dbConnection = require("./models"); // loads our connection to the mongo database
-const passport = require("./passport");
+const PORT = process.env.PORT || 3001;
 
 // ===== Middleware ====
-app.use(morgan("dev"))
+app.use(morgan('dev'));
 app.use(
 	bodyParser.urlencoded({
 		extended: false
 	})
-)
-app.use(bodyParser.json())
+);
+app.use(bodyParser.json());
 app.use(
 	session({
 		secret: process.env.APP_SECRET || 'this is the default passphrase',
@@ -30,32 +33,30 @@ app.use(
 );
 
 // ===== Passport ====
-app.use(passport.initialize())
-app.use(passport.session()) // will call the deserializeUser
+app.use(passport.initialize());
+app.use(passport.session()); // will call the deserializeUser
 
 // ==== if its production environment!
 if (process.env.NODE_ENV === 'production') {
-	const path = require('path')
-	console.log('YOU ARE IN THE PRODUCTION ENV')
-	app.use('/static', express.static(path.join(__dirname, '../build/static')))
+	const path = require('path');
+	console.log('YOU ARE IN THE PRODUCTION ENV');
+	app.use('/static', express.static(path.join(__dirname, '../build/static')));
 	app.get('/', (req, res) => {
-		res.sendFile(path.join(__dirname, '../build/'))
+		res.sendFile(path.join(__dirname, '../build/'));
 	})
-}
+};
 
-// Add API Routes
 /* Express app ROUTING */
-app.use('/index', require('./routes'));
+app.use('/routes', require('./routes'));
 
-// Send every request to the React app
-// Define any API routes before this runs
-app.get("*", function(req, res) {
-  res.sendFile(path.join(__dirname, "./client/build/index.html"));
+// ====== Error handler ====
+app.use(function(err, req, res, next) {
+	console.log('====== ERROR =======');
+	console.error(err.stack);
+	res.status(500);
 });
 
-// Connect to the Mongo DB
-mongoose.connect(process.env.MONGODB_URI || "mongodb://localhost/reactlandingpad");
-
-app.listen(PORT, function() {
-  console.log(`🌎 ==> Server now on port ${PORT}!`);
+// ==== Starting Server =====
+app.listen(PORT, () => {
+	console.log(`App listening on PORT: ${PORT}`)
 });
